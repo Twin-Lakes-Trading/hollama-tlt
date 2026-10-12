@@ -3,6 +3,7 @@
 	import { fade, slide } from 'svelte/transition';
 
 	import LL from '$i18n/i18n-svelte';
+	import { version } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { knowledgeStore, sessionsStore, settingsStore } from '#lib/localStorage.js';
@@ -61,6 +62,7 @@
 				<a href="/" class="mx-auto flex items-center gap-2 pr-4">
 					<img class="h-8 w-8 dark:invert" src="/scipio-logo.png" alt="Scipio logo" />
 					<span class="text-lg font-semibold tracking-tight">Scipio LLM</span>
+					<span class="text-xs text-muted" data-testid="app-version">v{version}</span>
 				</a>
 			</div>
 

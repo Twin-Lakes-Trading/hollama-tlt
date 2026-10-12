@@ -34,6 +34,7 @@ test.describe('Scipio preset', () => {
 	test('ships with the Scipio server ready to use', async ({ page }) => {
 		await page.goto('/');
 		await expect(page).toHaveURL('/sessions');
+		await expect(page.getByTestId('app-version')).toHaveText(/^v\d+\.\d+\.\d+/);
 
 		await page.getByText('New session', { exact: true }).click();
 		await page.getByLabel('Available models', { exact: true }).click();

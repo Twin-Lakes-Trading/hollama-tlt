@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	Template for the Ollama launch agent on the Scipio Mac mini. It replaces
+	`brew services`, which can't keep custom environment variables.
+	deploy/install-ollama.sh fills in the __PLACEHOLDERS__ and writes the result
+	to ~/Library/LaunchAgents.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.tlt.ollama</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__OLLAMA__</string>
+		<string>serve</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<!-- Listen on every interface so WireGuard clients can reach it -->
+		<key>OLLAMA_HOST</key>
+		<string>0.0.0.0:11434</string>
+		<!-- Let the Scipio UI call Ollama from the browser -->
+		<key>OLLAMA_ORIGINS</key>
+		<string>*</string>
+		<!-- Keep the loaded model in memory instead of unloading it when idle -->
+		<key>OLLAMA_KEEP_ALIVE</key>
+		<string>-1</string>
+		<!-- Same as Homebrew's service: keeps 16K context within GPU memory -->
+		<key>OLLAMA_FLASH_ATTENTION</key>
+		<string>1</string>
+		<key>OLLAMA_KV_CACHE_TYPE</key>
+		<string>q8_0</string>
+	</dict>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>__LOG__</string>
+	<key>StandardErrorPath</key>
+	<string>__LOG__</string>
+</dict>
+</plist>
