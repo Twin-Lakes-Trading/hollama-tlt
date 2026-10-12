@@ -8,6 +8,29 @@ Both Ollama and Scipio UI listen only on the mini's WireGuard address, `10.20.0.
 
 Run it with Node directly rather than Docker. Docker on macOS runs inside a VM that reserves its own memory, and the models already use about 21GB of the mini's 24GB. The Node server uses well under 100MB.
 
+## Keep the mini awake
+
+By default macOS puts the mini to sleep when idle. Asleep, it drops off WireGuard, so the site and models become unreachable until someone wakes it. Turn sleep off once, when setting up the mini:
+
+```bash
+sudo pmset -a sleep 0 disksleep 0 powernap 0 autorestart 1 womp 1
+pmset -g | grep -E " sleep|disksleep|autorestart|womp"
+```
+
+The second command should show `sleep 0`, `disksleep 0`, `autorestart 1` and `womp 1`.
+
+| Setting         | Why                                                                         |
+| --------------- | --------------------------------------------------------------------------- |
+| `sleep 0`       | Never sleeps, so it stays on WireGuard                                      |
+| `disksleep 0`   | Keeps the disk awake, so the first request after a quiet stretch isn't slow |
+| `powernap 0`    | Stops the short background wake-ups ("DarkWake") that come with sleeping    |
+| `autorestart 1` | Powers back on by itself after a power cut                                  |
+| `womp 1`        | Can be woken over the network if it ever does sleep                         |
+
+Also turn on **System Settings → Energy → Prevent automatic sleeping when the display is off**.
+
+To check whether the mini has been sleeping, run `pmset -g log | grep -E "Entering Sleep|Wake from" | tail -5`.
+
 ## Install
 
 On the Mac mini:
