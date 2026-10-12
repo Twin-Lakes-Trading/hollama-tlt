@@ -29,6 +29,7 @@
 	} from '#lib/sessions.js';
 	import { Sitemap } from '#lib/sitemap.js';
 	import {
+		recoverTextToolCalls,
 		runToolCall,
 		WEB_SEARCH_LIMITS,
 		WEB_SEARCH_TOOLS,
@@ -293,6 +294,13 @@
 				// Finalize processing of any remaining content
 				reasoningProcessor.finalize();
 
+				if (!toolCalls.length && canUseTools) {
+					const recovered = recoverTextToolCalls(editor.completion);
+					if (recovered) {
+						toolCalls.push(...recovered.toolCalls);
+						editor.completion = recovered.content;
+					}
+				}
 				if (!toolCalls.length) break;
 
 				session.messages = [

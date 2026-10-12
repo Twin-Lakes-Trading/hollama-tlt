@@ -179,6 +179,57 @@ test.describe('Web search', () => {
 		expect(requests[4].messages.at(-1)?.content).toContain('Search limit reached');
 	});
 
+	test('recovers a tool call the model wrote as text', async ({ page }) => {
+		await mockCapabilities(page, ['completion', 'tools']);
+		// How scipio-code (qwen3-coder) sometimes answers: no opening <tool_call> tag
+		const requests = await mockChatSequence(page, [
+			{
+				content:
+					"I'll fetch the page.\n\n<function=fetch_page>\n<parameter=url>\nhttps://example.com/kraken\n</parameter>\n</function>\n</tool_call>"
+			},
+			{ content: 'The page says hello.' }
+		]);
+		const fetched: string[] = [];
+		await page.route('**/api/tools/fetch', (route: Route) => {
+			fetched.push(JSON.parse(route.request().postData() ?? '{}').url);
+			return route.fulfill({
+				json: {
+					url: 'https://example.com/kraken',
+					title: 'Kraken',
+					text: 'hello',
+					isTruncated: false
+				}
+			});
+		});
+
+		await newSession(page);
+		await page.getByTestId('web-search-toggle').click();
+		await send(page, 'What does the page say?');
+
+		await expect(page.getByText('The page says hello.')).toBeVisible();
+		expect(fetched).toEqual(['https://example.com/kraken']);
+		await expect(page.getByText("I'll fetch the page.")).toBeVisible();
+		await expect(page.getByTestId('tool-step')).toHaveText('Read: https://example.com/kraken');
+		await expect(page.getByText('<function=')).toHaveCount(0);
+		await expect(page.getByText('</tool_call>')).toHaveCount(0);
+		expect(requests[1].messages.at(-2)?.tool_calls).toEqual([
+			{ function: { name: 'fetch_page', arguments: { url: 'https://example.com/kraken' } } }
+		]);
+	});
+
+	test('leaves tool markup alone when web search is off', async ({ page }) => {
+		await mockCapabilities(page, ['completion', 'tools']);
+		const requests = await mockChatSequence(page, [
+			{ content: 'Example: `<function=fetch_page><parameter=url>x</parameter></function>`' }
+		]);
+
+		await newSession(page);
+		await send(page, 'Show me the format');
+
+		await expect(page.getByText('<function=fetch_page>', { exact: false })).toBeVisible();
+		expect(requests).toHaveLength(1);
+	});
+
 	test('shows a failed search as a step and keeps going', async ({ page }) => {
 		await mockCapabilities(page, ['completion', 'tools']);
 		await mockChatSequence(page, [

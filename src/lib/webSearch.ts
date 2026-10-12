@@ -86,6 +86,32 @@ export function webSearchSystemPrompt(today = new Date()): string {
 	].join(' ');
 }
 
+// qwen3-coder (scipio-code) sometimes writes a tool call as text and drops the
+// opening <tool_call> tag, so Ollama doesn't recognize it:
+//   <function=fetch_page><parameter=url>https://…</parameter></function></tool_call>
+const TEXT_TOOL_CALL =
+	/(?:<tool_call>\s*)?<function=([\w-]+)>([\s\S]*?)<\/function>(?:\s*<\/tool_call>)?/g;
+const TEXT_TOOL_PARAMETER = /<parameter=([\w-]+)>([\s\S]*?)<\/parameter>/g;
+
+// Turns tool calls written as text back into real ones, and removes them from
+// the reply. Only our own tools are recovered.
+export function recoverTextToolCalls(
+	content: string
+): { content: string; toolCalls: ToolCall[] } | undefined {
+	const toolNames = WEB_SEARCH_TOOLS.map((tool) => tool.function.name ?? '');
+	const toolCalls: ToolCall[] = [];
+	const remaining = content.replace(TEXT_TOOL_CALL, (match, name: string, body: string) => {
+		if (!toolNames.includes(name)) return match;
+		const args = Object.fromEntries(
+			[...body.matchAll(TEXT_TOOL_PARAMETER)].map(([, key, value]) => [key, value.trim()])
+		);
+		toolCalls.push({ function: { name, arguments: args } });
+		return '';
+	});
+	if (!toolCalls.length) return undefined;
+	return { content: remaining.replace(/<\/?tool_call>/g, '').trim(), toolCalls };
+}
+
 export interface ToolRun {
 	// What the model receives as the tool result
 	content: string;

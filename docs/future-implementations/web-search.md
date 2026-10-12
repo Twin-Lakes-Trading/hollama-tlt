@@ -1,6 +1,6 @@
 # Web search for Scipio LLM
 
-**Status:** built (2026-10-12). This was the plan; where the code differs, the code wins. The toggle is the globe button in the prompt toolbar, the server side is [src/lib/server/webTools.ts](../../src/lib/server/webTools.ts), and the tool loop is in [the session page](../../src/routes/sessions/[id]/+page.svelte). SearXNG is installed by [deploy/install-searxng.sh](../../deploy/install-searxng.sh) and runs under Granian, as SearXNG's own container does.
+**Status:** built (2026-10-11). This was the plan; where the code differs, the code wins. The toggle is the globe button in the prompt toolbar, the server side is [src/lib/server/webTools.ts](../../src/lib/server/webTools.ts), and the tool loop is in [the session page](../../src/routes/sessions/[id]/+page.svelte). SearXNG is installed by [deploy/install-searxng.sh](../../deploy/install-searxng.sh) and runs under Granian, as SearXNG's own container does.
 
 ## Goal
 
