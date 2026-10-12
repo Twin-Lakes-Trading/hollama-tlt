@@ -36,9 +36,10 @@ To check whether the mini has been sleeping, run `pmset -g log | grep -E "Enteri
 On the Mac mini:
 
 ```bash
-brew install node@24 git
+brew install node@24 git python
 git clone git@github.com:Twin-Lakes-Trading/hollama-tlt.git ~/scipio-ui
 ~/scipio-ui/deploy/install-ollama.sh
+~/scipio-ui/deploy/install-searxng.sh
 ~/scipio-ui/deploy/install.sh
 ```
 
@@ -56,9 +57,11 @@ To change a setting, edit [deploy/com.tlt.ollama.plist](../deploy/com.tlt.ollama
 
 `install.sh` builds the app and installs it as a launch agent (`com.tlt.scipio-ui`), listening on `10.20.0.9:4173`. The agent starts at login and restarts if the server exits. To serve on a different port, run `PORT=8080 deploy/install.sh`. Running the script again replaces the existing agent.
 
+`install-searxng.sh` installs [SearXNG](https://docs.searxng.org), the search engine behind web search, in `~/searxng` and runs it as a launch agent (`com.tlt.searxng`) on `127.0.0.1:8888`. Only the Scipio UI server on the mini talks to it, so it isn't reachable from anywhere else, including WireGuard. Its settings are in `~/searxng/settings.yml`, created from [deploy/searxng-settings.yml](../deploy/searxng-settings.yml) on first install and kept on later runs. Run the script again to update SearXNG. It needs Python 3.10 or newer; macOS ships 3.9, hence `brew install python`. Scipio UI finds it at `http://127.0.0.1:8888` by default; set `SEARXNG_URL` in the Scipio UI launch agent to use another address.
+
 Check it from a machine on WireGuard: `http://10.20.0.9:4173` should open straight to Sessions, with `scipio-code` and `scipio-think` in the model picker.
 
-Both launch agents run under your user and start when it logs in, so the mini needs to log that user in automatically after a reboot. If they start before WireGuard is up, they can't bind to `10.20.0.9` yet; launchd keeps restarting them, so they come up a few seconds after WireGuard does.
+All three launch agents run under your user and start when it logs in, so the mini needs to log that user in automatically after a reboot. If they start before WireGuard is up, they can't bind to `10.20.0.9` yet; launchd keeps restarting them, so they come up a few seconds after WireGuard does.
 
 ## Update
 
@@ -75,6 +78,7 @@ It pulls `main`, rebuilds, and restarts the server. If a release changes a file 
 | Task        | Command                                                                           |
 | ----------- | --------------------------------------------------------------------------------- |
 | Ollama logs | `tail -f ~/Library/Logs/ollama.log`                                               |
+| Search logs | `tail -f ~/Library/Logs/searxng.log`                                              |
 | View logs   | `tail -f ~/Library/Logs/scipio-ui.log`                                            |
 | Restart     | `launchctl kickstart -k gui/$(id -u)/com.tlt.scipio-ui`                           |
 | Status      | `launchctl print gui/$(id -u)/com.tlt.scipio-ui \| grep state`                    |
@@ -85,6 +89,7 @@ It pulls `main`, rebuilds, and restarts the server. If a release changes a file 
 
 - **Checking Ollama:** `lsof -iTCP:11434 -sTCP:LISTEN` on the mini should show `10.20.0.9:11434`. If it shows `localhost:11434` or `*:11434`, Ollama was started by something other than `com.tlt.ollama`; run `deploy/install-ollama.sh` again.
 - **Ollama commands on the mini:** because Ollama no longer listens on `localhost`, commands like `ollama list` or `ollama show scipio-think` need the address: `OLLAMA_HOST=10.20.0.9 ollama list`. To skip typing it, add `export OLLAMA_HOST=10.20.0.9` to `~/.zshrc`.
+- **Checking search:** `curl "http://127.0.0.1:8888/search?q=test&format=json"` on the mini should return JSON with `results`. A few engines (often Brave or DuckDuckGo) refusing requests with "too many requests" or a CAPTCHA is normal; the others cover for them.
 - **Node path:** the agent runs the `node` found on your `PATH` when `install.sh` ran. If you upgrade or remove that Node install (for example through Homebrew or nvm), run `install.sh` again.
 - **Building by hand:** the build needs `PUBLIC_ADAPTER=docker-node`. Without it, the app is built for Cloudflare instead of as a Node server. The scripts set it for you.
 - **Upstream Docker image:** upstream's [SELF_HOSTING.md](../SELF_HOSTING.md) uses `ghcr.io/fmaclen/hollama`. Don't use it: that's upstream's image, without the Scipio changes.

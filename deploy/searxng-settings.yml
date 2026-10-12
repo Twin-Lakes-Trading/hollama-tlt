@@ -1,0 +1,21 @@
+# SearXNG settings for the Scipio Mac mini. deploy/install-searxng.sh copies
+# this to ~/searxng/settings.yml on first install, filling in __SECRET_KEY__.
+# Only overrides are listed; everything else uses SearXNG's defaults.
+use_default_settings: true
+
+general:
+  instance_name: 'Scipio search'
+
+server:
+  secret_key: '__SECRET_KEY__'
+  # Only the Scipio UI server on the same machine calls SearXNG, so there's
+  # no public traffic to rate limit or images to proxy
+  limiter: false
+  image_proxy: false
+  public_instance: false
+
+search:
+  # Scipio UI reads results as JSON; without it /search?format=json is refused
+  formats:
+    - html
+    - json

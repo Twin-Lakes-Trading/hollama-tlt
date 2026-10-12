@@ -653,6 +653,24 @@ type RootTranslation = {
 	 */
 	vocabOnly: string
 	/**
+	 * W​e​b​ ​s​e​a​r​c​h​ ​i​s​ ​o​f​f​.​ ​T​u​r​n​ ​o​n​ ​t​o​ ​l​e​t​ ​t​h​e​ ​m​o​d​e​l​ ​s​e​a​r​c​h​ ​t​h​e​ ​w​e​b
+	 */
+	webSearchOff: string
+	/**
+	 * W​e​b​ ​s​e​a​r​c​h​ ​i​s​ ​o​n​.​ ​T​h​e​ ​m​o​d​e​l​ ​c​a​n​ ​s​e​a​r​c​h​ ​t​h​e​ ​w​e​b​ ​a​n​d​ ​r​e​a​d​ ​p​a​g​e​s
+	 */
+	webSearchOn: string
+	/**
+	 * R​e​a​d​i​n​g​:​ ​{​u​r​l​}
+	 * @param {string} url
+	 */
+	webSearchReading: RequiredParams<'url'>
+	/**
+	 * S​e​a​r​c​h​i​n​g​:​ ​{​q​u​e​r​y​}
+	 * @param {string} query
+	 */
+	webSearchSearching: RequiredParams<'query'>
+	/**
 	 * W​r​i​t​e​ ​a​ ​p​r​o​m​p​t​ ​t​o​ ​s​t​a​r​t​ ​a​ ​n​e​w​ ​s​e​s​s​i​o​n
 	 */
 	writePromptToStart: string
@@ -1332,6 +1350,22 @@ The completion in progress will stop
 	 * Vocab only
 	 */
 	vocabOnly: () => LocalizedString
+	/**
+	 * Web search is off. Turn on to let the model search the web
+	 */
+	webSearchOff: () => LocalizedString
+	/**
+	 * Web search is on. The model can search the web and read pages
+	 */
+	webSearchOn: () => LocalizedString
+	/**
+	 * Reading: {url}
+	 */
+	webSearchReading: (arg: { url: string }) => LocalizedString
+	/**
+	 * Searching: {query}
+	 */
+	webSearchSearching: (arg: { query: string }) => LocalizedString
 	/**
 	 * Write a prompt to start a new session
 	 */

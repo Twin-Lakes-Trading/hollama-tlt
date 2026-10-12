@@ -4,6 +4,7 @@
 	import { saveSession, type Editor, type Message, type Session } from '#lib/sessions.js';
 
 	import Article from './Article.svelte';
+	import ToolStep from './ToolStep.svelte';
 
 	interface Props {
 		session: Session;
@@ -38,17 +39,23 @@
 
 {#each session.messages as message, i (session.id + i)}
 	{#key message.role}
-		<Article
-			{message}
-			retryIndex={['assistant', 'system'].includes(message.role) ? i : undefined}
-			{handleRetry}
-			handleEditMessage={() => handleEditMessage(message)}
-			handleDeleteAttachment={() => handleDeleteAttachment(message)}
-		/>
+		{#if message.role === 'tool' || message.toolCalls?.length}
+			<ToolStep {message} />
+		{:else}
+			<Article
+				{message}
+				retryIndex={['assistant', 'system'].includes(message.role) ? i : undefined}
+				{handleRetry}
+				handleEditMessage={() => handleEditMessage(message)}
+				handleDeleteAttachment={() => handleDeleteAttachment(message)}
+			/>
+		{/if}
 	{/key}
 {/each}
 
-{#if editor.isCompletionInProgress}
+{#if editor.isCompletionInProgress && editor.toolStatus}
+	<ToolStep status={editor.toolStatus} />
+{:else if editor.isCompletionInProgress}
 	<Article
 		message={{
 			role: 'assistant',

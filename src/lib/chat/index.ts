@@ -1,15 +1,27 @@
-import type { ErrorResponse, ProgressResponse, PullRequest, StatusResponse } from 'ollama/browser';
+import type {
+	ErrorResponse,
+	ProgressResponse,
+	PullRequest,
+	StatusResponse,
+	Tool
+} from 'ollama/browser';
 import { get } from 'svelte/store';
 
 import { sessionsStore, settingsStore } from '#lib/localStorage.js';
 import type { Model } from '#lib/settings.js';
+import type { ToolCall } from '#lib/webSearch.js';
 
 import { type OllamaOptions } from './ollama';
 
 export interface Message {
-	role: 'user' | 'assistant' | 'system';
+	role: 'user' | 'assistant' | 'system' | 'tool';
 	content: string;
 	images?: string[]; // Optional array of base64 image strings
+	// Sent back with an assistant turn that called tools
+	thinking?: string;
+	tool_calls?: ToolCall[];
+	// Which tool a `tool` message is the result of
+	tool_name?: string;
 }
 
 export interface ChatRequest {
@@ -17,11 +29,13 @@ export interface ChatRequest {
 	messages: Message[];
 	stream?: boolean;
 	options?: Partial<OllamaOptions>;
+	tools?: Tool[];
 }
 
 export interface ChatChunk {
 	content?: string;
 	reasoning?: string;
+	toolCalls?: ToolCall[];
 }
 
 export interface ChatStrategy {

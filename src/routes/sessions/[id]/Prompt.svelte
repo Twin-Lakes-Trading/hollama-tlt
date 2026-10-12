@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { Brain, CircleStop, Image, LoaderCircle, UnfoldVertical } from '@lucide/svelte';
+	import { Brain, CircleStop, Globe, Image, LoaderCircle, UnfoldVertical } from '@lucide/svelte';
 	import MessageSquareText from '@lucide/svelte/icons/message-square-text';
 	import Settings_2 from '@lucide/svelte/icons/settings-2';
 	import Trash_2 from '@lucide/svelte/icons/trash-2';
 	import { toast } from 'svelte-sonner';
 
 	import LL from '$i18n/i18n-svelte';
+	import { OllamaStrategy } from '#lib/chat/ollama.js';
 	import Button from '#lib/components/Button.svelte';
 	import ButtonSubmit from '#lib/components/ButtonSubmit.svelte';
 	import Field from '#lib/components/Field.svelte';
@@ -14,7 +15,7 @@
 	import { ConnectionType } from '#lib/connections.js';
 	import { loadKnowledge, type Knowledge } from '#lib/knowledge.js';
 	import { knowledgeStore, serversStore } from '#lib/localStorage.js';
-	import type { Editor, Message, Session } from '#lib/sessions.js';
+	import { saveSession, type Editor, type Message, type Session } from '#lib/sessions.js';
 	import { generateRandomId } from '#lib/utils.js';
 
 	import AttachmentImage from './AttachmentImage.svelte';
@@ -59,6 +60,28 @@
 		$serversStore.find((s) => s.id === session.model?.serverId)?.connectionType ===
 			ConnectionType.Ollama
 	);
+
+	// Web search needs a model that can call tools
+	let supportsTools = $state(false);
+	$effect(() => {
+		const model = session.model;
+		const server = $serversStore.find((s) => s.id === model?.serverId);
+		supportsTools = false;
+		if (!model || server?.connectionType !== ConnectionType.Ollama) return;
+
+		let isCurrent = true;
+		new OllamaStrategy(server).getCapabilities(model.name).then((capabilities) => {
+			if (isCurrent) supportsTools = capabilities.includes('tools');
+		});
+		return () => {
+			isCurrent = false;
+		};
+	});
+
+	function toggleWebSearch() {
+		session.webSearch = !session.webSearch;
+		if (session.messages.length) saveSession(session);
+	}
 
 	$effect(() => {
 		if (attachments.length) scrollToBottom(true);
@@ -385,6 +408,17 @@
 				>
 					<Image class="base-icon" />
 				</Button>
+				{#if supportsTools}
+					<Button
+						variant={session.webSearch ? 'default' : 'outline'}
+						onclick={toggleWebSearch}
+						aria-pressed={!!session.webSearch}
+						data-testid="web-search-toggle"
+						title={session.webSearch ? $LL.webSearchOn() : $LL.webSearchOff()}
+					>
+						<Globe class="base-icon" />
+					</Button>
+				{/if}
 			</div>
 
 			<div class="prompt-editor__submit">

@@ -7,14 +7,21 @@ import { getLastUsedModels } from './chat';
 import type { Knowledge } from './knowledge';
 import type { Model } from './settings';
 import { formatTimestampToNow } from './utils';
+import type { ToolCall } from './webSearch';
 
 export interface Message {
-	role: 'user' | 'assistant' | 'system';
+	role: 'user' | 'assistant' | 'system' | 'tool';
 	content: string;
 	knowledge?: Knowledge;
 	context?: number[];
 	reasoning?: string;
 	images?: { data: string; filename: string }[]; // Store image data and filename
+	// An assistant step that called tools, such as a web search
+	toolCalls?: ToolCall[];
+	// A `tool` message holds a tool's result: which tool, and what it showed as a step
+	toolName?: string;
+	toolLabel?: string;
+	isToolError?: boolean;
 }
 
 export interface Session {
@@ -25,6 +32,8 @@ export interface Session {
 	model?: Model;
 	updatedAt?: string;
 	title?: string;
+	// Lets the model search the web (tool-capable Ollama models only)
+	webSearch?: boolean;
 }
 
 export interface Editor {
@@ -35,6 +44,8 @@ export interface Editor {
 	isCompletionInProgress: boolean;
 	// True while Ollama loads the model into memory before the first token
 	isModelLoading?: boolean;
+	// The tool being run, such as "Searching: …", while web search works
+	toolStatus?: string;
 	isNewSession: boolean;
 	shouldFocusTextarea: boolean;
 	attachments?: { type: 'image'; id: string; name: string; dataUrl: string }[];

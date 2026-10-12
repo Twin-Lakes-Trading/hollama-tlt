@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	Template for the SearXNG launch agent on the Scipio Mac mini.
+	deploy/install-searxng.sh fills in the __PLACEHOLDERS__ and writes the
+	result to ~/Library/LaunchAgents.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.tlt.searxng</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__SEARXNG_DIR__/venv/bin/granian</string>
+		<string>searx.webapp:app</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>__SEARXNG_DIR__/searxng-src</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>SEARXNG_SETTINGS_PATH</key>
+		<string>__SEARXNG_DIR__/settings.yml</string>
+		<key>GRANIAN_INTERFACE</key>
+		<string>wsgi</string>
+		<!-- Local only: just the Scipio UI server on this machine calls it -->
+		<key>GRANIAN_HOST</key>
+		<string>127.0.0.1</string>
+		<key>GRANIAN_PORT</key>
+		<string>__PORT__</string>
+		<key>GRANIAN_WEBSOCKETS</key>
+		<string>false</string>
+		<key>GRANIAN_BLOCKING_THREADS</key>
+		<string>4</string>
+	</dict>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>__LOG__</string>
+	<key>StandardErrorPath</key>
+	<string>__LOG__</string>
+</dict>
+</plist>

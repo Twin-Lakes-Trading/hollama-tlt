@@ -4,7 +4,11 @@
 
 	import LL from '$i18n/i18n-svelte';
 	import { beforeNavigate } from '$app/navigation';
-	import { type ChatRequest, type ChatStrategy } from '#lib/chat/index.js';
+	import {
+		type Message as ChatMessage,
+		type ChatRequest,
+		type ChatStrategy
+	} from '#lib/chat/index.js';
 	import { OllamaStrategy } from '#lib/chat/ollama.js';
 	import { OpenAIStrategy } from '#lib/chat/openai.js';
 	import Button from '#lib/components/Button.svelte';
@@ -24,6 +28,14 @@
 		type Message
 	} from '#lib/sessions.js';
 	import { Sitemap } from '#lib/sitemap.js';
+	import {
+		runToolCall,
+		WEB_SEARCH_LIMITS,
+		WEB_SEARCH_TOOLS,
+		webSearchSystemPrompt,
+		type ToolBudget,
+		type ToolCall
+	} from '#lib/webSearch.js';
 
 	import type { PageData } from './$types';
 	import Controls from './Controls.svelte';
@@ -112,7 +124,7 @@
 		if (images && images.length) message.images = images;
 		session.messages = [...session.messages, message];
 		await scrollToBottom(true); // Force scroll after submitting prompt
-		await handleCompletion(session.messages);
+		await handleCompletion();
 	}
 
 	async function handleSubmitEditMessage(images?: { data: string; filename: string }[]) {
@@ -132,7 +144,7 @@
 		editor.messageIndexToEdit = null;
 		editor.prompt = '';
 
-		await handleCompletion(session.messages);
+		await handleCompletion();
 	}
 
 	function handleSubmit(images?: { data: string; filename: string }[]) {
@@ -153,10 +165,40 @@
 		const mostRecentUserMessage = session.messages.filter((m) => m.role === 'user').at(-1);
 		if (!mostRecentUserMessage) throw new Error('No user message to retry');
 
-		await handleCompletion(session.messages);
+		await handleCompletion();
 	}
 
-	async function handleCompletion(messages: Message[]) {
+	// Earlier answers' research steps are dropped to save context: their
+	// answers already carry what was learned
+	function toChatMessages(history: Message[], systemPrompt: string): ChatMessage[] {
+		const lastUserIndex = history.findLastIndex((m) => m.role === 'user');
+		const chatMessages = history.flatMap((msg, i): ChatMessage[] => {
+			const isToolStep = msg.role === 'tool' || !!msg.toolCalls?.length;
+			if (isToolStep && i < lastUserIndex) return [];
+			if (msg.role === 'tool') {
+				return [{ role: 'tool', content: msg.content, tool_name: msg.toolName }];
+			}
+
+			// Ollama expects images as base64 strings without filename
+			const chatMessage: ChatMessage = { ...msg, images: msg.images?.map((img) => img.data) };
+			if (msg.toolCalls?.length) {
+				chatMessage.tool_calls = msg.toolCalls;
+				chatMessage.thinking = msg.reasoning;
+			}
+			return [chatMessage];
+		});
+		return systemPrompt
+			? [{ ...session.systemPrompt, content: systemPrompt, images: undefined }, ...chatMessages]
+			: chatMessages;
+	}
+
+	function describeToolCall({ function: { name, arguments: args } }: ToolCall): string {
+		if (name === 'web_search') return $LL.webSearchSearching({ query: String(args.query ?? '') });
+		if (name === 'fetch_page') return $LL.webSearchReading({ url: String(args.url ?? '') });
+		return name;
+	}
+
+	async function handleCompletion() {
 		editor.abortController = new AbortController();
 		editor.isCompletionInProgress = true;
 		editor.prompt = '';
@@ -166,26 +208,7 @@
 		const server = $serversStore.find((s) => s.id === session.model?.serverId);
 		if (!server) throw new Error('Server not found');
 		if (!session.model?.name) throw new Error('No model');
-
-		let chatMessages = session.systemPrompt.content
-			? [session.systemPrompt, ...messages]
-			: messages;
-
-		// Map messages for the chat request, converting images if necessary
-		const chatMessagesForRequest = chatMessages.map((msg) => {
-			// Ollama expects images as base64 strings without filename
-			const images = msg.images?.map((img) => img.data);
-			return {
-				...msg,
-				images // Override images with just the data
-			};
-		});
-
-		let chatRequest: ChatRequest = {
-			model: session.model.name,
-			options: session.options,
-			messages: chatMessagesForRequest
-		};
+		const modelName = session.model.name;
 
 		try {
 			let strategy: ChatStrategy | undefined = undefined;
@@ -208,7 +231,7 @@
 			let hasReceivedChunk = false;
 			if (strategy instanceof OllamaStrategy) {
 				strategy
-					.isModelLoaded(session.model.name)
+					.isModelLoaded(modelName)
 					.then((isLoaded) => {
 						if (isLoaded || hasReceivedChunk) return;
 						if (editor.abortController === abortController && editor.isCompletionInProgress)
@@ -217,30 +240,91 @@
 					.catch(() => {});
 			}
 
-			// Some models still inline their reasoning in `<think>` tags within the content
-			const reasoningProcessor = createReasoningProcessor(
-				(text) => {
-					editor.completion += text;
-				},
-				(text) => {
-					editor.reasoning += text;
-				}
-			);
+			const useWebSearch =
+				!!session.webSearch &&
+				strategy instanceof OllamaStrategy &&
+				(await strategy.getCapabilities(modelName)).includes('tools');
+			const systemPrompt = [
+				session.systemPrompt.content,
+				useWebSearch ? webSearchSystemPrompt() : ''
+			]
+				.filter(Boolean)
+				.join('\n\n');
+			const budget: ToolBudget = { searches: 0, pageReads: 0 };
 
-			await strategy.chat(
-				chatRequest,
-				editor.abortController.signal,
-				async ({ content, reasoning }) => {
-					hasReceivedChunk = true;
-					editor.isModelLoading = false;
-					if (reasoning) editor.reasoning += reasoning;
-					if (content) reasoningProcessor.processChunk(content);
+			// With web search the model may call tools: run them, add the results,
+			// and ask again until it answers. Without it this runs once.
+			for (let round = 1; ; round++) {
+				const canUseTools = useWebSearch && round < WEB_SEARCH_LIMITS.roundsPerAnswer;
+				const chatRequest: ChatRequest = {
+					model: modelName,
+					options: session.options,
+					messages: toChatMessages(session.messages, systemPrompt),
+					...(canUseTools && { tools: WEB_SEARCH_TOOLS })
+				};
+
+				editor.completion = '';
+				editor.reasoning = '';
+				const toolCalls: ToolCall[] = [];
+
+				// Some models still inline their reasoning in `<think>` tags within the content
+				const reasoningProcessor = createReasoningProcessor(
+					(text) => {
+						editor.completion += text;
+					},
+					(text) => {
+						editor.reasoning += text;
+					}
+				);
+
+				await strategy.chat(
+					chatRequest,
+					abortController.signal,
+					async ({ content, reasoning, toolCalls: calls }) => {
+						hasReceivedChunk = true;
+						editor.isModelLoading = false;
+						if (reasoning) editor.reasoning += reasoning;
+						if (content) reasoningProcessor.processChunk(content);
+						if (calls) toolCalls.push(...calls);
+						await scrollToBottom();
+					}
+				);
+
+				// Finalize processing of any remaining content
+				reasoningProcessor.finalize();
+
+				if (!toolCalls.length) break;
+
+				session.messages = [
+					...session.messages,
+					{
+						role: 'assistant',
+						content: editor.completion,
+						reasoning: editor.reasoning,
+						toolCalls
+					}
+				];
+				editor.completion = '';
+				editor.reasoning = '';
+
+				for (const call of toolCalls) {
+					editor.toolStatus = describeToolCall(call);
 					await scrollToBottom();
+					const result = await runToolCall(call, budget, abortController.signal);
+					session.messages = [
+						...session.messages,
+						{
+							role: 'tool',
+							content: result.content,
+							toolName: call.function.name,
+							toolLabel: result.label,
+							isToolError: result.isError
+						}
+					];
 				}
-			);
-
-			// Finalize processing of any remaining content
-			reasoningProcessor.finalize();
+				editor.toolStatus = undefined;
+				saveSession(session);
+			}
 
 			const message: Message = {
 				role: 'assistant',
@@ -259,6 +343,7 @@
 			editor.isModelLoading = false;
 			await scrollToBottom();
 		} catch (error) {
+			editor.toolStatus = undefined;
 			const typedError = error instanceof Error ? error : new Error(String(error));
 			if (typedError.name === 'AbortError') return; // User aborted the request
 			handleError(typedError);

@@ -10,15 +10,19 @@ import type {
 
 import type { Server } from '#lib/connections.js';
 import type { Model } from '#lib/settings.js';
+import type { ToolCall } from '#lib/webSearch.js';
 
 import type { ChatChunk, ChatStrategy } from './index';
 
 // Reasoning models stream their thoughts in `thinking`, separate from `content`.
 // Ollama can also report an error mid-stream on a line of its own.
 type OllamaChatLine = Partial<ChatResponse> & {
-	message?: { content?: string; thinking?: string };
+	message?: { content?: string; thinking?: string; tool_calls?: ToolCall[] };
 	error?: string;
 };
+
+// Capabilities rarely change, so ask Ollama once per model and server
+const capabilitiesCache = new Map<string, Promise<string[]>>();
 
 export interface OllamaOptions {
 	numa: boolean;
@@ -104,8 +108,30 @@ export class OllamaStrategy implements ChatStrategy {
 		const chatResponse = JSON.parse(line) as OllamaChatLine;
 		if (chatResponse.error) throw new Error(chatResponse.error);
 
-		const { content, thinking } = chatResponse.message ?? {};
-		if (content || thinking) onChunk({ content, reasoning: thinking });
+		const { content, thinking, tool_calls } = chatResponse.message ?? {};
+		if (content || thinking || tool_calls?.length) {
+			onChunk({ content, reasoning: thinking, toolCalls: tool_calls });
+		}
+	}
+
+	// What a model supports, such as `tools` or `thinking`
+	getCapabilities(name: string): Promise<string[]> {
+		const key = `${this.server.baseUrl}|${name}`;
+		let capabilities = capabilitiesCache.get(key);
+		if (!capabilities) {
+			capabilities = fetch(`${this.server.baseUrl}/api/show`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ model: name })
+			})
+				.then((response) => (response.ok ? response.json() : {}))
+				.then((data: { capabilities?: string[] }) => data.capabilities ?? [])
+				.catch(() => []);
+			// Don't cache failures, so a server that was down gets asked again
+			capabilities.then((list) => list.length || capabilitiesCache.delete(key));
+			capabilitiesCache.set(key, capabilities);
+		}
+		return capabilities;
 	}
 
 	async getModels(): Promise<Model[]> {
