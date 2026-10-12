@@ -33,6 +33,17 @@ if command -v brew >/dev/null 2>&1; then
 	brew services stop ollama >/dev/null 2>&1 || true
 fi
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+# bootout returns before launchd has removed the agent, and bootstrapping
+# while it's still there fails with "Input/output error"
+i=0
+while launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; do
+	i=$((i + 1))
+	if [ "$i" -ge 15 ]; then
+		echo "The old $LABEL agent didn't stop. Try again in a few seconds." >&2
+		exit 1
+	fi
+	sleep 1
+done
 osascript -e 'quit app "Ollama"' >/dev/null 2>&1 || true
 
 i=0
@@ -58,7 +69,8 @@ i=0
 until curl -fs "http://$BIND_ADDRESS:11434/api/version" >/dev/null 2>&1; do
 	i=$((i + 1))
 	if [ "$i" -ge 15 ]; then
-		echo "Ollama didn't start. Check $LOG" >&2
+		echo "Ollama didn't start. Last lines of $LOG:" >&2
+		tail -n 20 "$LOG" >&2
 		exit 1
 	fi
 	sleep 1

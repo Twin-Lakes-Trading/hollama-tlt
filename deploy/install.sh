@@ -44,6 +44,28 @@ sed -e "s#__NODE__#$NODE#g" \
 	deploy/$LABEL.plist >"$PLIST"
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+# bootout returns before launchd has removed the agent, and bootstrapping
+# while it's still there fails with "Input/output error"
+i=0
+while launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; do
+	i=$((i + 1))
+	if [ "$i" -ge 15 ]; then
+		echo "The old $LABEL agent didn't stop. Try again in a few seconds." >&2
+		exit 1
+	fi
+	sleep 1
+done
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
+
+i=0
+until curl -fs -o /dev/null "http://$BIND_ADDRESS:$PORT/"; do
+	i=$((i + 1))
+	if [ "$i" -ge 15 ]; then
+		echo "Scipio UI didn't start. Last lines of $LOG:" >&2
+		tail -n 20 "$LOG" >&2
+		exit 1
+	fi
+	sleep 1
+done
 
 echo "Scipio UI is running on http://$BIND_ADDRESS:$PORT (logs: $LOG)"
