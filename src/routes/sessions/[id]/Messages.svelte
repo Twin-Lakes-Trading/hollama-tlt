@@ -58,5 +58,8 @@
 		isStreamingArticle={true}
 		currentRawReasoning={editor.reasoning}
 		currentRawCompletion={editor.completion}
+		status={editor.isModelLoading
+			? $LL.loadingModel({ model: session.model?.name ?? '' })
+			: undefined}
 	/>
 {/if}

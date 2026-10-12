@@ -313,6 +313,11 @@ type RootTranslation = {
 	 */
 	light: string
 	/**
+	 * L​o​a​d​i​n​g​ ​{​m​o​d​e​l​}​ ​i​n​t​o​ ​m​e​m​o​r​y​,​ ​t​h​i​s​ ​c​a​n​ ​t​a​k​e​ ​u​p​ ​t​o​ ​3​0​ ​s​e​c​o​n​d​s​…
+	 * @param {string} model
+	 */
+	loadingModel: RequiredParams<'model'>
+	/**
 	 * L​o​w​ ​V​R​A​M
 	 */
 	lowVram: string
@@ -991,6 +996,10 @@ The completion in progress will stop
 	 * Light
 	 */
 	light: () => LocalizedString
+	/**
+	 * Loading {model} into memory, this can take up to 30 seconds…
+	 */
+	loadingModel: (arg: { model: string }) => LocalizedString
 	/**
 	 * Low VRAM
 	 */

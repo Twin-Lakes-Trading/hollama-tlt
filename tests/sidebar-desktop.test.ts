@@ -29,14 +29,6 @@ test.describe('Sidebar on desktop', () => {
 			.click();
 		await expect(page).toHaveURL('/settings');
 		await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toBeVisible();
-
-		// Navigate to MOTD page via sidebar link
-		await page
-			.getByRole('navigation', { name: 'Main navigation' })
-			.getByRole('link', { name: 'Motd' })
-			.click();
-		await expect(page).toHaveURL('/motd');
-		await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toBeVisible();
 	});
 
 	test('can be toggled open and closed', async ({ page }) => {
@@ -150,13 +142,6 @@ test.describe('Sidebar on desktop', () => {
 	test('navigation links work correctly', async ({ page }) => {
 		await page.goto('/');
 
-		// Test MOTD link in sidebar
-		await page
-			.getByRole('navigation', { name: 'Main navigation' })
-			.getByRole('link', { name: 'Motd' })
-			.click();
-		await expect(page).toHaveURL('/motd');
-
 		// Test Settings link in sidebar
 		await page
 			.getByRole('navigation', { name: 'Main navigation' })
@@ -164,10 +149,10 @@ test.describe('Sidebar on desktop', () => {
 			.click();
 		await expect(page).toHaveURL('/settings');
 
-		// Test GitHub link (should open in new tab)
-		const githubLink = page.getByRole('link', { name: 'GitHub' });
-		await expect(githubLink).toHaveAttribute('target', '_blank');
-		await expect(githubLink).toHaveAttribute('href', 'https://github.com/fmaclen/hollama');
+		// Upstream's MOTD and GitHub links are removed in this fork
+		const nav = page.getByRole('navigation', { name: 'Main navigation' });
+		await expect(nav.getByRole('link', { name: 'Motd' })).toHaveCount(0);
+		await expect(nav.getByRole('link', { name: 'GitHub' })).toHaveCount(0);
 	});
 
 	test('theme toggle button works correctly', async ({ page }) => {
@@ -233,12 +218,9 @@ test.describe('Sidebar on desktop', () => {
 		// Sidebar should remain open on desktop
 		await expect(sidebar).toBeVisible();
 
-		// Navigate to MOTD
-		await page
-			.getByRole('navigation', { name: 'Main navigation' })
-			.getByRole('link', { name: 'Motd' })
-			.click();
-		await expect(page).toHaveURL('/motd');
+		// Navigate back to sessions
+		await page.getByRole('tab', { name: 'Sessions' }).click();
+		await expect(page).toHaveURL('/sessions');
 
 		// Sidebar should still remain open on desktop
 		await expect(sidebar).toBeVisible();

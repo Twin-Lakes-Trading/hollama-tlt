@@ -33,6 +33,8 @@ export interface Editor {
 	messageIndexToEdit: number | null;
 	isCodeEditor: boolean;
 	isCompletionInProgress: boolean;
+	// True while Ollama loads the model into memory before the first token
+	isModelLoading?: boolean;
 	isNewSession: boolean;
 	shouldFocusTextarea: boolean;
 	attachments?: { type: 'image'; id: string; name: string; dataUrl: string }[];

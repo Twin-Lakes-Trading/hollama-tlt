@@ -110,7 +110,13 @@ test.describe('Servers', () => {
 		expect(localStorageServers).toContain('https://api.openai.com/v1');
 		expect(localStorageServers).toContain('sk-validapikey');
 
-		const ollamaConnection = page.getByTestId('server').first();
+		// With no saved server list the browser starts from the Scipio preset,
+		// so the migrated connections come after it
+		await expect(page.getByTestId('server')).toHaveCount(3);
+		await expect(page.getByTestId('server').first().getByLabel('Base URL')).toHaveValue(
+			'http://10.20.0.9:11434'
+		);
+		const ollamaConnection = page.getByTestId('server').nth(1);
 		await expect(toastMessage).toBeVisible();
 		await expect(ollamaConnection).toBeVisible();
 		await expect(ollamaConnection.locator('.badge', { hasText: 'Ollama' })).toBeVisible();

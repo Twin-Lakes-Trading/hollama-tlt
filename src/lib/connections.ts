@@ -17,6 +17,19 @@ export interface Server {
 	apiKey?: string;
 }
 
+// The Scipio Ollama server (Mac mini, reachable over WireGuard only). It ships
+// preconfigured so a fresh browser can start chatting without any setup. The
+// filter limits the model list to the `scipio-*` tags built for it.
+export const SCIPIO_SERVER: Server = {
+	id: 'scipio',
+	baseUrl: 'http://10.20.0.9:11434',
+	connectionType: ConnectionType.Ollama,
+	label: 'Scipio',
+	modelFilter: 'scipio-',
+	isVerified: new Date(0),
+	isEnabled: true
+};
+
 export function getDefaultServer(connectionType: ConnectionType): Server {
 	let baseUrl: string = '';
 	let modelFilter: string | undefined = undefined;

@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { Brain, ChevronDown, ChevronUp, Pencil, RefreshCw, Trash2 } from '@lucide/svelte';
+	import {
+		Brain,
+		ChevronDown,
+		ChevronUp,
+		LoaderCircle,
+		Pencil,
+		RefreshCw,
+		Trash2
+	} from '@lucide/svelte';
 	import { quadInOut } from 'svelte/easing';
 	import { slide } from 'svelte/transition';
 
@@ -22,7 +30,8 @@
 		handleDeleteAttachment = undefined,
 		isStreamingArticle = false,
 		currentRawReasoning,
-		currentRawCompletion
+		currentRawCompletion,
+		status = undefined
 	}: {
 		message: Message;
 		retryIndex?: number;
@@ -32,6 +41,7 @@
 		isStreamingArticle?: boolean;
 		currentRawReasoning?: string;
 		currentRawCompletion?: string;
+		status?: string;
 	} = $props();
 
 	const isKnowledgeAttachment = $derived(message.knowledge?.name !== undefined);
@@ -149,7 +159,12 @@
 				{/if}
 			</div>
 		{/if}
-		{#if message.content}
+		{#if status}
+			<p class="article__status" role="status">
+				<LoaderCircle class="base-icon animate-spin" />
+				{status}
+			</p>
+		{:else if message.content}
 			<Markdown markdown={message.content} />
 		{/if}
 		{#if message.images && message.images.length}
@@ -229,6 +244,10 @@
 
 	.reasoning__button {
 		@apply flex w-full items-center justify-between gap-2 p-2;
+	}
+
+	.article__status {
+		@apply flex items-center gap-2 text-sm text-muted;
 	}
 
 	.article__images {

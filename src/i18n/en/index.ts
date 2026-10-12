@@ -76,6 +76,7 @@ const en = {
 	language: 'Language',
 	lastUsedModels: 'Recently used models',
 	light: 'Light',
+	loadingModel: 'Loading {model:string} into memory, this can take up to 30 seconds…',
 	lowVram: 'Low VRAM',
 	mainGpu: 'Main GPU',
 	messageOfTheDay: 'Message of the day',

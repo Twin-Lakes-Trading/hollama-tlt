@@ -4,7 +4,7 @@ import { get, writable, type Updater } from 'svelte/store';
 import { browser } from '$app/env';
 import type { Session } from '#lib/sessions.js';
 
-import type { Server } from './connections';
+import { SCIPIO_SERVER, type Server } from './connections';
 import type { Knowledge } from './knowledge';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 
@@ -82,6 +82,13 @@ export const settingsStore = createLocalStorageStore<Settings>(
 	StorageKey.HollamaPreferences,
 	DEFAULT_SETTINGS
 );
-export const serversStore = createLocalStorageStore<Server[]>(StorageKey.HollamaServers, []);
+// A browser that has never saved a server list starts with the Scipio server.
+// Once the list is saved (even as empty) the user's own choice wins.
+// The server render must stay empty: hydrating `bind:value` inputs would copy
+// the prerendered Scipio fields onto whatever servers the browser has saved.
+export const serversStore = createLocalStorageStore<Server[]>(
+	StorageKey.HollamaServers,
+	browser ? [SCIPIO_SERVER] : []
+);
 export const sessionsStore = createLocalStorageStore<Session[]>(StorageKey.HollamaSessions, []);
 export const knowledgeStore = createLocalStorageStore<Knowledge[]>(StorageKey.HollamaKnowledge, []);

@@ -201,6 +201,22 @@
 
 			if (!strategy) throw new Error('Invalid strategy');
 
+			// Show a loading state instead of looking frozen while Ollama swaps a
+			// cold model into memory. The check is sent just before the chat request
+			// so it sees what was loaded beforehand, without holding the request up.
+			const abortController = editor.abortController;
+			let hasReceivedChunk = false;
+			if (strategy instanceof OllamaStrategy) {
+				strategy
+					.isModelLoaded(session.model.name)
+					.then((isLoaded) => {
+						if (isLoaded || hasReceivedChunk) return;
+						if (editor.abortController === abortController && editor.isCompletionInProgress)
+							editor.isModelLoading = true;
+					})
+					.catch(() => {});
+			}
+
 			// Some models still inline their reasoning in `<think>` tags within the content
 			const reasoningProcessor = createReasoningProcessor(
 				(text) => {
@@ -215,6 +231,8 @@
 				chatRequest,
 				editor.abortController.signal,
 				async ({ content, reasoning }) => {
+					hasReceivedChunk = true;
+					editor.isModelLoading = false;
 					if (reasoning) editor.reasoning += reasoning;
 					if (content) reasoningProcessor.processChunk(content);
 					await scrollToBottom();
@@ -238,6 +256,7 @@
 			editor.reasoning = '';
 			editor.shouldFocusTextarea = true;
 			editor.isCompletionInProgress = false;
+			editor.isModelLoading = false;
 			await scrollToBottom();
 		} catch (error) {
 			const typedError = error instanceof Error ? error : new Error(String(error));
@@ -265,6 +284,7 @@
 		editor.completion = '';
 		editor.reasoning = '';
 		editor.isCompletionInProgress = false;
+		editor.isModelLoading = false;
 		editor.shouldFocusTextarea = true;
 	}
 
@@ -285,6 +305,7 @@
 		editor.completion = '';
 		editor.reasoning = '';
 		editor.isCompletionInProgress = false;
+		editor.isModelLoading = false;
 		editor.shouldFocusTextarea = true;
 	}
 

@@ -127,6 +127,16 @@ export class OllamaStrategy implements ChatStrategy {
 			}));
 	}
 
+	// Whether the model is already in memory. Only one Scipio model fits at a
+	// time, so a model that isn't loaded takes 10–30s before its first token.
+	async isModelLoaded(name: string): Promise<boolean> {
+		const response = await fetch(`${this.server.baseUrl}/api/ps`);
+		if (!response.ok) throw new Error('Failed to fetch Ollama running models');
+
+		const data: ListResponse | undefined = await response.json();
+		return !!data?.models?.some((model) => model.name === name || model.model === name);
+	}
+
 	async pull(
 		payload: PullRequest,
 		onChunk: (progress: ProgressResponse | StatusResponse | ErrorResponse) => void

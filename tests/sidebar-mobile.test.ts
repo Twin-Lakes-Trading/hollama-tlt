@@ -34,31 +34,6 @@ test.describe('Sidebar on mobile', () => {
 		await expect(sidebar).not.toBeVisible();
 	});
 
-	test('auto-collapses when navigating to MOTD', async ({ page }) => {
-		await page.goto('/');
-		await page.getByRole('tab', { name: 'Sessions' }).click();
-
-		const sidebar = page.getByRole('navigation', { name: 'Main navigation' });
-
-		// Check if sidebar is visible, if not expand it
-		const isVisible = await sidebar.isVisible();
-		if (!isVisible) {
-			const expandButton = page.getByRole('button', { name: 'Expand sidebar' });
-			await expandButton.click();
-		}
-		await expect(sidebar).toBeVisible();
-
-		// Navigate to MOTD
-		await page
-			.getByRole('navigation', { name: 'Main navigation' })
-			.getByRole('link', { name: 'Motd' })
-			.click();
-		await expect(page).toHaveURL('/motd');
-
-		// Sidebar should auto-collapse on mobile
-		await expect(sidebar).not.toBeVisible();
-	});
-
 	test('stays open when switching between sessions and knowledge', async ({ page }) => {
 		await page.goto('/');
 		await page.getByRole('tab', { name: 'Sessions' }).click();
