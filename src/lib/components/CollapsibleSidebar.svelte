@@ -60,7 +60,7 @@
 			<div class="flex items-center justify-between border-b py-4">
 				<a href="/" class="mx-auto flex items-center gap-2 pr-4">
 					<img class="h-8 w-8 dark:invert" src="/scipio-logo.png" alt="Scipio logo" />
-					<span class="text-lg font-semibold tracking-tight">Scipio</span>
+					<span class="text-lg font-semibold tracking-tight">Scipio LLM</span>
 				</a>
 			</div>
 
