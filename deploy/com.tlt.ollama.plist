@@ -17,9 +17,9 @@
 	</array>
 	<key>EnvironmentVariables</key>
 	<dict>
-		<!-- Listen on every interface so WireGuard clients can reach it -->
+		<!-- Listen on the WireGuard address only, so only VPN clients can reach it -->
 		<key>OLLAMA_HOST</key>
-		<string>0.0.0.0:11434</string>
+		<string>__BIND_ADDRESS__:11434</string>
 		<!-- Let the Scipio UI call Ollama from the browser -->
 		<key>OLLAMA_ORIGINS</key>
 		<string>*</string>

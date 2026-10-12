@@ -1,9 +1,11 @@
 #!/bin/sh
-# Runs Ollama as a launch agent listening on the network (0.0.0.0:11434), so the
-# Scipio UI can reach it over WireGuard. Replaces `brew services`, which drops
-# custom environment variables. Safe to run again: it replaces the agent.
+# Runs Ollama as a launch agent listening on the mini's WireGuard address, so
+# the Scipio UI can reach it over WireGuard and nothing else can. Replaces
+# `brew services`, which drops custom environment variables. Safe to run again:
+# it replaces the agent.
 #
 # Usage: deploy/install-ollama.sh
+#        BIND_ADDRESS=10.20.0.9 deploy/install-ollama.sh
 set -eu
 
 LABEL=com.tlt.ollama
@@ -14,6 +16,15 @@ OLLAMA="$(command -v ollama || true)"
 
 if [ -z "$OLLAMA" ]; then
 	echo "ollama not found. Install it with: brew install ollama" >&2
+	exit 1
+fi
+
+# Only listen on the mini's WireGuard address, so nothing outside the VPN can
+# connect. Override with BIND_ADDRESS=... if the WireGuard address changes.
+BIND_ADDRESS="${BIND_ADDRESS:-10.20.0.9}"
+if ! ifconfig | grep -q "inet $BIND_ADDRESS "; then
+	echo "$BIND_ADDRESS isn't assigned to this machine. Is WireGuard up?" >&2
+	echo "Set BIND_ADDRESS to the mini's WireGuard address and run this again." >&2
 	exit 1
 fi
 
@@ -38,12 +49,13 @@ done
 
 mkdir -p "$(dirname "$PLIST")" "$(dirname "$LOG")"
 sed -e "s#__OLLAMA__#$OLLAMA#g" \
+	-e "s#__BIND_ADDRESS__#$BIND_ADDRESS#g" \
 	-e "s#__LOG__#$LOG#g" \
 	"$APP_DIR/deploy/$LABEL.plist" >"$PLIST"
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 i=0
-until curl -fs http://127.0.0.1:11434/api/version >/dev/null 2>&1; do
+until curl -fs "http://$BIND_ADDRESS:11434/api/version" >/dev/null 2>&1; do
 	i=$((i + 1))
 	if [ "$i" -ge 15 ]; then
 		echo "Ollama didn't start. Check $LOG" >&2
@@ -53,4 +65,4 @@ until curl -fs http://127.0.0.1:11434/api/version >/dev/null 2>&1; do
 done
 
 lsof -iTCP:11434 -sTCP:LISTEN
-echo "Ollama is listening on 0.0.0.0:11434 (logs: $LOG)"
+echo "Ollama is listening on $BIND_ADDRESS:11434 (logs: $LOG)"

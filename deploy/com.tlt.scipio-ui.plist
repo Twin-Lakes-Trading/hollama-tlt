@@ -17,6 +17,8 @@
 	<string>__APP_DIR__</string>
 	<key>EnvironmentVariables</key>
 	<dict>
+		<key>HOST</key>
+		<string>__BIND_ADDRESS__</string>
 		<key>PORT</key>
 		<string>__PORT__</string>
 		<key>PUBLIC_ADAPTER</key>
