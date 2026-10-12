@@ -10,7 +10,7 @@ import type {
 
 import type { Server } from '#lib/connections.js';
 import type { Model } from '#lib/settings.js';
-import type { ToolCall } from '#lib/webSearch.js';
+import type { ToolCall } from '#lib/tools.js';
 
 import type { ChatChunk, ChatStrategy } from './index';
 

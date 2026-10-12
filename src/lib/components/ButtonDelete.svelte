@@ -3,6 +3,7 @@
 
 	import LL from '$i18n/i18n-svelte';
 	import { goto } from '$app/navigation';
+	import { deleteSessionFiles } from '#lib/files.js';
 	import { deleteStoreItem, knowledgeStore, sessionsStore } from '#lib/localStorage.js';
 	import { Sitemap } from '#lib/sitemap.js';
 
@@ -26,6 +27,7 @@
 
 			case Sitemap.SESSIONS:
 				if ($sessionsStore) $sessionsStore = deleteStoreItem($sessionsStore, id);
+				deleteSessionFiles(id).catch(() => {});
 				return goto('/sessions');
 
 			default:

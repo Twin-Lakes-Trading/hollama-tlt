@@ -1,6 +1,7 @@
 <script lang="ts">
 	import LL from '$i18n/i18n-svelte';
 	import EmptyMessage from '#lib/components/EmptyMessage.svelte';
+	import { deleteFile } from '#lib/files.js';
 	import { saveSession, type Editor, type Message, type Session } from '#lib/sessions.js';
 
 	import Article from './Article.svelte';
@@ -30,6 +31,7 @@
 	function handleDeleteAttachment(message: Message) {
 		session.messages = session.messages.filter((m) => m !== message);
 		saveSession(session);
+		if (message.file) deleteFile(message.file.id).catch(() => {});
 	}
 </script>
 

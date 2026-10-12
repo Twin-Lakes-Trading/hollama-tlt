@@ -3,6 +3,7 @@
 		Brain,
 		ChevronDown,
 		ChevronUp,
+		FileText,
 		LoaderCircle,
 		Pencil,
 		RefreshCw,
@@ -17,6 +18,7 @@
 	import ButtonCopy from '#lib/components/ButtonCopy.svelte';
 	import { generateNewUrl } from '#lib/components/ButtonNew.js';
 	import Markdown from '#lib/components/Markdown.svelte';
+	import { formatBytes } from '#lib/files.js';
 	import { type Message } from '#lib/sessions.js';
 	import { Sitemap } from '#lib/sitemap.js';
 
@@ -45,7 +47,10 @@
 	} = $props();
 
 	const isKnowledgeAttachment = $derived(message.knowledge?.name !== undefined);
-	const isUserRole = $derived(message.role === 'user' && !isKnowledgeAttachment);
+	const isFileAttachment = $derived(message.file !== undefined);
+	const isUserRole = $derived(
+		message.role === 'user' && !isKnowledgeAttachment && !isFileAttachment
+	);
 	let isReasoningVisible = $state(false);
 	let userHasInteractedWithToggle = $state(false);
 
@@ -90,6 +95,30 @@
 				<Button variant="link" href={generateNewUrl(Sitemap.KNOWLEDGE, message.knowledge?.id)}>
 					{message.knowledge?.name}
 				</Button>
+			</div>
+		</div>
+		<div class="attachment__interactive">
+			<Button
+				variant="icon"
+				onclick={() => handleDeleteAttachment && handleDeleteAttachment(message)}
+			>
+				<Trash2 class="base-icon" />
+			</Button>
+		</div>
+	</article>
+{:else if isFileAttachment && message.file}
+	<article class="attachment" data-testid="file-attachment-message">
+		<div class="attachment__content">
+			<div class="attachment__icon">
+				<FileText class="base-icon" />
+			</div>
+			<div class="attachment__name">
+				{message.file.name}
+				<span class="attachment__meta">
+					{formatBytes(message.file.size)}{message.file.isTruncated
+						? ` · ${$LL.fileShownInPart()}`
+						: ''}
+				</span>
 			</div>
 		</div>
 		<div class="attachment__interactive">
@@ -232,6 +261,10 @@
 
 	.attachment__name {
 		@apply text-sm;
+	}
+
+	.attachment__meta {
+		@apply ml-1 text-xs text-muted;
 	}
 
 	.attachment__content {

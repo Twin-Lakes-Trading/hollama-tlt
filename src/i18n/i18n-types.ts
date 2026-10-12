@@ -69,6 +69,10 @@ type RootTranslation = {
 	 */
 	assistant: string
 	/**
+	 * A​t​t​a​c​h​ ​f​i​l​e​s​:​ ​t​e​x​t​,​ ​c​o​d​e​,​ ​C​S​V​ ​o​r​ ​P​D​F
+	 */
+	attachFile: string
+	/**
 	 * A​t​t​a​c​h​ ​i​m​a​g​e
 	 */
 	attachImage: string
@@ -240,6 +244,10 @@ type RootTranslation = {
 	 * F​1​6​ ​K​V
 	 */
 	f16Kv: string
+	/**
+	 * t​h​e​ ​m​o​d​e​l​ ​s​e​e​s​ ​t​h​e​ ​s​t​a​r​t​;​ ​P​y​t​h​o​n​ ​r​e​a​d​s​ ​a​l​l​ ​o​f​ ​i​t
+	 */
+	fileShownInPart: string
 	/**
 	 * F​r​e​q​u​e​n​c​y​ ​p​e​n​a​l​t​y
 	 */
@@ -527,6 +535,18 @@ type RootTranslation = {
 	 */
 	reVerify: string
 	/**
+	 * P​y​t​h​o​n​ ​i​s​ ​o​f​f​.​ ​T​u​r​n​ ​o​n​ ​t​o​ ​l​e​t​ ​t​h​e​ ​m​o​d​e​l​ ​r​u​n​ ​P​y​t​h​o​n​ ​i​n​ ​y​o​u​r​ ​b​r​o​w​s​e​r
+	 */
+	runCodeOff: string
+	/**
+	 * P​y​t​h​o​n​ ​i​s​ ​o​n​.​ ​T​h​e​ ​m​o​d​e​l​ ​c​a​n​ ​r​u​n​ ​P​y​t​h​o​n​ ​i​n​ ​y​o​u​r​ ​b​r​o​w​s​e​r
+	 */
+	runCodeOn: string
+	/**
+	 * R​u​n​n​i​n​g​ ​P​y​t​h​o​n​…
+	 */
+	runningPython: string
+	/**
 	 * R​u​n​t​i​m​e​ ​o​p​t​i​o​n​s
 	 */
 	runtimeOptions: string
@@ -571,9 +591,17 @@ type RootTranslation = {
 	 */
 	settings: string
 	/**
+	 * S​h​o​w​ ​d​e​t​a​i​l​s
+	 */
+	showDetails: string
+	/**
 	 * S​o​r​r​y​,​ ​s​o​m​e​t​h​i​n​g​ ​w​e​n​t​ ​w​r​o​n​g
 	 */
 	somethingWentWrong: string
+	/**
+	 * S​t​a​r​t​i​n​g​ ​P​y​t​h​o​n​ ​(​t​h​e​ ​f​i​r​s​t​ ​r​u​n​ ​d​o​w​n​l​o​a​d​s​ ​i​t​)​…
+	 */
+	startingPython: string
 	/**
 	 * S​t​o​p​ ​s​e​q​u​e​n​c​e
 	 */
@@ -771,6 +799,10 @@ The completion in progress will stop
 	 */
 	assistant: () => LocalizedString
 	/**
+	 * Attach files: text, code, CSV or PDF
+	 */
+	attachFile: () => LocalizedString
+	/**
 	 * Attach image
 	 */
 	attachImage: () => LocalizedString
@@ -942,6 +974,10 @@ The completion in progress will stop
 	 * F16 KV
 	 */
 	f16Kv: () => LocalizedString
+	/**
+	 * the model sees the start; Python reads all of it
+	 */
+	fileShownInPart: () => LocalizedString
 	/**
 	 * Frequency penalty
 	 */
@@ -1227,6 +1263,18 @@ The completion in progress will stop
 	 */
 	reVerify: () => LocalizedString
 	/**
+	 * Python is off. Turn on to let the model run Python in your browser
+	 */
+	runCodeOff: () => LocalizedString
+	/**
+	 * Python is on. The model can run Python in your browser
+	 */
+	runCodeOn: () => LocalizedString
+	/**
+	 * Running Python…
+	 */
+	runningPython: () => LocalizedString
+	/**
 	 * Runtime options
 	 */
 	runtimeOptions: () => LocalizedString
@@ -1271,9 +1319,17 @@ The completion in progress will stop
 	 */
 	settings: () => LocalizedString
 	/**
+	 * Show details
+	 */
+	showDetails: () => LocalizedString
+	/**
 	 * Sorry, something went wrong
 	 */
 	somethingWentWrong: () => LocalizedString
+	/**
+	 * Starting Python (the first run downloads it)…
+	 */
+	startingPython: () => LocalizedString
 	/**
 	 * Stop sequence
 	 */

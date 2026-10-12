@@ -19,6 +19,7 @@
 	import Metadata from '#lib/components/Metadata.svelte';
 	import { ConnectionType } from '#lib/connections.js';
 	import { serversStore, settingsStore } from '#lib/localStorage.js';
+	import { isPythonStarted } from '#lib/python.js';
 	import {
 		formatSessionMetadata,
 		getSessionTitle,
@@ -29,14 +30,15 @@
 	} from '#lib/sessions.js';
 	import { Sitemap } from '#lib/sitemap.js';
 	import {
+		MAX_ROUNDS_PER_ANSWER,
+		newToolBudget,
 		recoverTextToolCalls,
 		runToolCall,
-		WEB_SEARCH_LIMITS,
-		WEB_SEARCH_TOOLS,
-		webSearchSystemPrompt,
-		type ToolBudget,
-		type ToolCall
-	} from '#lib/webSearch.js';
+		toolsFor,
+		toolsSystemPrompt,
+		type ToolCall,
+		type ToolOptions
+	} from '#lib/tools.js';
 
 	import type { PageData } from './$types';
 	import Controls from './Controls.svelte';
@@ -196,6 +198,8 @@
 	function describeToolCall({ function: { name, arguments: args } }: ToolCall): string {
 		if (name === 'web_search') return $LL.webSearchSearching({ query: String(args.query ?? '') });
 		if (name === 'fetch_page') return $LL.webSearchReading({ url: String(args.url ?? '') });
+		if (name === 'run_python')
+			return isPythonStarted() ? $LL.runningPython() : $LL.startingPython();
 		return name;
 	}
 
@@ -241,27 +245,34 @@
 					.catch(() => {});
 			}
 
-			const useWebSearch =
-				!!session.webSearch &&
+			const supportsTools =
+				(!!session.webSearch || !!session.runCode) &&
 				strategy instanceof OllamaStrategy &&
 				(await strategy.getCapabilities(modelName)).includes('tools');
+			const toolOptions: ToolOptions = {
+				webSearch: supportsTools && !!session.webSearch,
+				runCode: supportsTools && !!session.runCode,
+				sessionId: session.id,
+				files: session.messages.flatMap((m) => (m.file ? [m.file] : []))
+			};
+			const tools = toolsFor(toolOptions);
 			const systemPrompt = [
 				session.systemPrompt.content,
-				useWebSearch ? webSearchSystemPrompt() : ''
+				tools.length ? toolsSystemPrompt(toolOptions) : ''
 			]
 				.filter(Boolean)
 				.join('\n\n');
-			const budget: ToolBudget = { searches: 0, pageReads: 0 };
+			const budget = newToolBudget();
 
-			// With web search the model may call tools: run them, add the results,
-			// and ask again until it answers. Without it this runs once.
+			// With tools on, the model may call them: run them, add the results,
+			// and ask again until it answers. Without tools this runs once.
 			for (let round = 1; ; round++) {
-				const canUseTools = useWebSearch && round < WEB_SEARCH_LIMITS.roundsPerAnswer;
+				const canUseTools = tools.length > 0 && round < MAX_ROUNDS_PER_ANSWER;
 				const chatRequest: ChatRequest = {
 					model: modelName,
 					options: session.options,
 					messages: toChatMessages(session.messages, systemPrompt),
-					...(canUseTools && { tools: WEB_SEARCH_TOOLS })
+					...(canUseTools && { tools })
 				};
 
 				editor.completion = '';
@@ -295,7 +306,7 @@
 				reasoningProcessor.finalize();
 
 				if (!toolCalls.length && canUseTools) {
-					const recovered = recoverTextToolCalls(editor.completion);
+					const recovered = recoverTextToolCalls(editor.completion, tools);
 					if (recovered) {
 						toolCalls.push(...recovered.toolCalls);
 						editor.completion = recovered.content;
@@ -318,7 +329,7 @@
 				for (const call of toolCalls) {
 					editor.toolStatus = describeToolCall(call);
 					await scrollToBottom();
-					const result = await runToolCall(call, budget, abortController.signal);
+					const result = await runToolCall(call, budget, abortController.signal, toolOptions);
 					session.messages = [
 						...session.messages,
 						{
@@ -326,7 +337,9 @@
 							content: result.content,
 							toolName: call.function.name,
 							toolLabel: result.label,
-							isToolError: result.isError
+							isToolError: result.isError,
+							toolDetail: result.detail,
+							toolImages: result.images
 						}
 					];
 				}

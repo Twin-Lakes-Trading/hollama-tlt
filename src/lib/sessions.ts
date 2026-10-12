@@ -4,10 +4,11 @@ import type { OllamaOptions } from '#lib/chat/ollama.js';
 import { sessionsStore, settingsStore, sortStore } from '#lib/localStorage.js';
 
 import { getLastUsedModels } from './chat';
+import type { AttachedFile } from './files';
 import type { Knowledge } from './knowledge';
 import type { Model } from './settings';
+import type { ToolCall } from './tools';
 import { formatTimestampToNow } from './utils';
-import type { ToolCall } from './webSearch';
 
 export interface Message {
 	role: 'user' | 'assistant' | 'system' | 'tool';
@@ -22,6 +23,11 @@ export interface Message {
 	toolName?: string;
 	toolLabel?: string;
 	isToolError?: boolean;
+	// Shown when the step is expanded (markdown), and images under it (data URLs)
+	toolDetail?: string;
+	toolImages?: string[];
+	// A user message that attaches a file; its content is the file's text
+	file?: AttachedFile;
 }
 
 export interface Session {
@@ -34,6 +40,8 @@ export interface Session {
 	title?: string;
 	// Lets the model search the web (tool-capable Ollama models only)
 	webSearch?: boolean;
+	// Lets the model run Python in this browser (tool-capable Ollama models only)
+	runCode?: boolean;
 }
 
 export interface Editor {

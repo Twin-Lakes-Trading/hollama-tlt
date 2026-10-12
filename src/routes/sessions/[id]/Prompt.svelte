@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { Brain, CircleStop, Globe, Image, LoaderCircle, UnfoldVertical } from '@lucide/svelte';
+	import {
+		Brain,
+		CircleStop,
+		FileText,
+		Globe,
+		Image,
+		LoaderCircle,
+		Paperclip,
+		SquareTerminal,
+		UnfoldVertical
+	} from '@lucide/svelte';
 	import MessageSquareText from '@lucide/svelte/icons/message-square-text';
 	import Settings_2 from '@lucide/svelte/icons/settings-2';
 	import Trash_2 from '@lucide/svelte/icons/trash-2';
@@ -13,6 +23,16 @@
 	import FieldSelectModel from '#lib/components/FieldSelectModel.svelte';
 	import FieldTextEditor from '#lib/components/FieldTextEditor.svelte';
 	import { ConnectionType } from '#lib/connections.js';
+	import {
+		extractText,
+		FILE_ACCEPT,
+		FILE_LIMITS,
+		fileMessageContent,
+		FileReadError,
+		formatBytes,
+		saveFile,
+		type AttachedFile
+	} from '#lib/files.js';
 	import { loadKnowledge, type Knowledge } from '#lib/knowledge.js';
 	import { knowledgeStore, serversStore } from '#lib/localStorage.js';
 	import { saveSession, type Editor, type Message, type Session } from '#lib/sessions.js';
@@ -34,7 +54,17 @@
 		dataUrl: string;
 	};
 
-	type Attachment = KnowledgeAttachment | ImageAttachment;
+	type FileAttachment = {
+		type: 'file';
+		id: string;
+		name: string;
+		mime: string;
+		size: number;
+		text: string;
+		data: ArrayBuffer;
+	};
+
+	type Attachment = KnowledgeAttachment | ImageAttachment | FileAttachment;
 
 	interface Props {
 		editor: Editor;
@@ -81,6 +111,42 @@
 	function toggleWebSearch() {
 		session.webSearch = !session.webSearch;
 		if (session.messages.length) saveSession(session);
+	}
+
+	function toggleRunCode() {
+		session.runCode = !session.runCode;
+		if (session.messages.length) saveSession(session);
+	}
+
+	function handleFileUploadClick() {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = FILE_ACCEPT;
+		input.multiple = true;
+		input.onchange = async (e) => {
+			const files = Array.from((e.target as HTMLInputElement).files ?? []);
+			for (const file of files) {
+				try {
+					const text = await extractText(file);
+					const attachment: FileAttachment = {
+						type: 'file',
+						id: generateRandomId(),
+						name: file.name,
+						mime: file.type,
+						size: file.size,
+						text,
+						data: await file.arrayBuffer()
+					};
+					attachments = [...attachments, attachment];
+				} catch (error) {
+					if (!(error instanceof FileReadError)) console.error(error);
+					toast.warning(
+						error instanceof FileReadError ? error.message : `Couldn't read ${file.name}`
+					);
+				}
+			}
+		};
+		input.click();
 	}
 
 	$effect(() => {
@@ -252,7 +318,41 @@
 		];
 	}
 
-	function submit() {
+	async function submit() {
+		const fileAttachments = attachments.filter((a): a is FileAttachment => a.type === 'file');
+		if (fileAttachments.length) {
+			const fileMessages: Message[] = [];
+			for (const a of fileAttachments) {
+				const file: AttachedFile = {
+					id: a.id,
+					name: a.name,
+					type: a.mime,
+					size: a.size,
+					textLength: a.text.length,
+					isTruncated: a.text.length > FILE_LIMITS.maxCharsInContext
+				};
+				try {
+					await saveFile({
+						id: a.id,
+						sessionId: session.id,
+						name: a.name,
+						type: a.mime,
+						data: a.data
+					});
+				} catch (error) {
+					// The model still gets the text; only Python loses the original
+					console.error('Failed to store file', error);
+				}
+				fileMessages.push({
+					role: 'user',
+					file,
+					content: fileMessageContent(file, a.text, !!session.runCode)
+				});
+			}
+			session.messages = [...session.messages, ...fileMessages];
+			attachments = attachments.filter((a) => a.type !== 'file');
+		}
+
 		const knowledgeAttachments = attachments.filter(
 			(a): a is KnowledgeAttachment => a.type === 'knowledge'
 		);
@@ -373,6 +473,12 @@
 							</div>
 						{:else if attachment.type === 'image'}
 							<AttachmentImage dataUrl={attachment.dataUrl} name={attachment.name} />
+						{:else if attachment.type === 'file'}
+							<div class="attachment__file">
+								<FileText class="base-icon" />
+								<span data-testid="attachment-file-name">{attachment.name}</span>
+								<span class="text-muted">{formatBytes(attachment.size)}</span>
+							</div>
 						{/if}
 						<Button
 							variant="outline"
@@ -408,6 +514,14 @@
 				>
 					<Image class="base-icon" />
 				</Button>
+				<Button
+					variant="outline"
+					onclick={handleFileUploadClick}
+					data-testid="file-attachment"
+					title={$LL.attachFile()}
+				>
+					<Paperclip class="base-icon" />
+				</Button>
 				{#if supportsTools}
 					<Button
 						variant={session.webSearch ? 'default' : 'outline'}
@@ -417,6 +531,15 @@
 						title={session.webSearch ? $LL.webSearchOn() : $LL.webSearchOff()}
 					>
 						<Globe class="base-icon" />
+					</Button>
+					<Button
+						variant={session.runCode ? 'default' : 'outline'}
+						onclick={toggleRunCode}
+						aria-pressed={!!session.runCode}
+						data-testid="run-code-toggle"
+						title={session.runCode ? $LL.runCodeOn() : $LL.runCodeOff()}
+					>
+						<SquareTerminal class="base-icon" />
 					</Button>
 				{/if}
 			</div>
@@ -560,5 +683,9 @@
 
 	.attachment__knowledge {
 		@apply w-full;
+	}
+
+	.attachment__file {
+		@apply mr-2 flex w-full items-center gap-x-2 overflow-hidden text-ellipsis whitespace-nowrap rounded-md border p-2 text-xs;
 	}
 </style>

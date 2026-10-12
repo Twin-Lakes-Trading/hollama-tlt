@@ -9,7 +9,7 @@ import { get } from 'svelte/store';
 
 import { sessionsStore, settingsStore } from '#lib/localStorage.js';
 import type { Model } from '#lib/settings.js';
-import type { ToolCall } from '#lib/webSearch.js';
+import type { ToolCall } from '#lib/tools.js';
 
 import { type OllamaOptions } from './ollama';
 
